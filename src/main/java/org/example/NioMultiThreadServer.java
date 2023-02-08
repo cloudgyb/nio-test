@@ -27,11 +27,14 @@ import java.util.concurrent.TimeUnit;
  */
 public class NioMultiThreadServer {
     static class RequestIOHandler extends Thread {
+        private final SelectionKey key;
         private final SocketChannel socketChannel;
         private SocketAddress remoteAddress = null;
 
-        RequestIOHandler(SocketChannel socketChannel) {
-            this.socketChannel = socketChannel;
+        RequestIOHandler(SelectionKey key) {
+            System.out.println(key);
+            this.key = key;
+            this.socketChannel = (SocketChannel) key.channel();
             try {
                 this.remoteAddress = socketChannel.getRemoteAddress();
             } catch (IOException ignore) {
@@ -44,7 +47,7 @@ public class NioMultiThreadServer {
             ByteBuffer buff1 = ByteBuffer.allocate(5);
             long read;
             try {
-                while ((read = socketChannel.read(new ByteBuffer[]{buff, buff1})) != 0) {
+                while ((read = socketChannel.read(new ByteBuffer[]{buff, buff1})) > 0) {
                     System.out.printf("读取到客户端（%s）" + read + "个字节！%n", remoteAddress);
                     StringBuilder sb = new StringBuilder();
                     buff.flip();
@@ -56,11 +59,17 @@ public class NioMultiThreadServer {
                     for (int i = 0; i < buff1.limit(); i++) {
                         sb.append((char) buff1.get());
                     }
+                    buff1.clear();
                     System.out.printf("读取到客户端（%s）数据：" + sb + "%n", remoteAddress);
                     socketChannel.write(ByteBuffer.wrap(("回显：" + sb).getBytes(StandardCharsets.UTF_8)));
                 }
+                if (read == -1) { //通道被正常关闭，需要将该 key 从 selector 中移除（本质是将该 key 加入到 selector canceledKeys 集合中
+                    //在下一轮 select() 中将 cancelledKeys 所有的 key 从 selector 的 keys 中移除。 ）
+                    key.cancel();
+                }
             } catch (IOException e) {
                 try {
+                    key.cancel();
                     System.out.printf("客户端（%s）读取抛出异常！%s %n", remoteAddress, e.getMessage());
                     socketChannel.close();
                 } catch (IOException ignore) {
@@ -101,20 +110,19 @@ public class NioMultiThreadServer {
             try {
                 System.out.println("开始监听io事件...");
                 while (true) {
-                    if (this.selector.select() <= 0) {
+                    int n = this.selector.select();//当调用 selector.wakeup(); 时直接返回，返回值可能为 0
+                    if (n == 0)
                         continue;
-                    }
                     Set<SelectionKey> keys = selector.selectedKeys();
                     System.out.println("处理读事件！" + keys.size());
                     Iterator<SelectionKey> iterator = keys.iterator();
                     while (iterator.hasNext()) {
                         SelectionKey key = iterator.next();
-                        SocketChannel channel = (SocketChannel) key.channel();
+                        iterator.remove();
                         try {
-                            threadPool.submit(new RequestIOHandler(channel));
+                            threadPool.submit(new RequestIOHandler(key));
                         } catch (Exception ignore) {
                         }
-                        iterator.remove();
                     }
                     keys.clear();
                 }
