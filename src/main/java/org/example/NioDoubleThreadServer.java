@@ -5,44 +5,88 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.nio.ByteBuffer;
-import java.nio.channels.SelectionKey;
-import java.nio.channels.Selector;
-import java.nio.channels.ServerSocketChannel;
-import java.nio.channels.SocketChannel;
+import java.nio.channels.*;
 import java.nio.charset.StandardCharsets;
 import java.util.Iterator;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
 
 /**
- * 多线程的非阻塞服务器实现
- * 主线程负责处理请求的连接，<b>当有 io 事件发生时</b>将要处理的事件放到线程池中处理请求的读写。
- * 弊端：请求连接比较多时，使用一个主线程接受连接的效率低
+ * 双线程的非阻塞服务器实现
+ * 主线程负责处理请求的连接，<b>当有 io 事件发生时</b>将要处理的事件放到 EventLoop 中的 worker 线程处理请求的读写。
+ * 弊端：请求连接比较多时，使用一个主线程接受连接的效率低，一个 worker 线程处理 IO 较慢。
  *
  * @author geng
  * @since 2023/2/7 10:49
  */
-public class NioMultiThreadServer {
-    static class RequestIOHandler extends Thread {
-        private final SelectionKey key;
-        private final SocketChannel socketChannel;
-        private SocketAddress remoteAddress = null;
+public class NioDoubleThreadServer {
+    static class EventLoop implements Closeable {
+        private final Thread thread;
+        private volatile Selector selector;
 
-        RequestIOHandler(SelectionKey key) {
-            System.out.println(key);
-            this.key = key;
-            this.socketChannel = (SocketChannel) key.channel();
+        EventLoop() {
+            this.thread = new Thread(EventLoop.this::run);
             try {
-                this.remoteAddress = socketChannel.getRemoteAddress();
+                this.selector = Selector.open();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            this.thread.start();
+        }
+
+        public void register(SocketChannel channel) throws IOException {
+            channel.configureBlocking(false);
+            channel.register(this.selector, SelectionKey.OP_READ);
+            SocketAddress remoteAddress = null;
+            try {
+                remoteAddress = channel.getRemoteAddress();
             } catch (IOException ignore) {
             }
+            this.selector.wakeup();
+            System.out.printf("客户端（%s）连接已建立！%n", remoteAddress != null ? remoteAddress : "未知");
+        }
+
+        public void run() {
+            System.out.println(Thread.currentThread().getName() + " 开始监听io事件...");
+            while (true) {
+                try {
+                    int n = this.selector.select();//当调用 selector.wakeup(); 时直接返回，返回值可能为 0
+                    if (n == 0)
+                        continue;
+                } catch (ClosedSelectorException | IOException e) {
+                    System.out.println(Thread.currentThread().getName() + "Selector 出现异常！当前 EventLoop 退出!");
+                    break;
+                }
+                Set<SelectionKey> keys = selector.selectedKeys();
+                System.out.println("处理读事件！" + keys.size());
+                Iterator<SelectionKey> iterator = keys.iterator();
+                while (iterator.hasNext()) {
+                    SelectionKey key = iterator.next();
+                    iterator.remove();
+                    handleIO(key);
+                }
+            }
+            try {
+                if (this.selector.isOpen())
+                    this.selector.close();
+            } catch (IOException ignore) {
+            }
+            System.out.println(Thread.currentThread().getName() + " 停止监听io事件！");
+
         }
 
         @Override
-        public void run() {
+        public void close() throws IOException {
+            thread.interrupt();
+            selector.close();
+        }
+
+        private void handleIO(SelectionKey key) {
+            SocketChannel socketChannel = (SocketChannel) key.channel();
+            SocketAddress remoteAddress = null;
+            try {
+                remoteAddress = socketChannel.getRemoteAddress();
+            } catch (IOException ignore) {
+            }
             ByteBuffer buff = ByteBuffer.allocate(10);
             ByteBuffer buff1 = ByteBuffer.allocate(5);
             long read;
@@ -66,6 +110,8 @@ public class NioMultiThreadServer {
                 if (read == -1) { //通道被正常关闭，需要将该 key 从 selector 中移除（本质是将该 key 加入到 selector canceledKeys 集合中
                     //在下一轮 select() 中将 cancelledKeys 所有的 key 从 selector 的 keys 中移除。 ）
                     key.cancel();
+                    socketChannel.close();
+                    System.out.printf("客户端（%s）关闭连接！%n", remoteAddress);
                 }
             } catch (IOException e) {
                 try {
@@ -78,67 +124,6 @@ public class NioMultiThreadServer {
         }
     }
 
-    static class EventLoop extends Thread implements Closeable {
-        private final ExecutorService threadPool;
-        private volatile Selector selector;
-
-        EventLoop(int threadN) {
-            this.threadPool = new ThreadPoolExecutor(threadN, threadN,
-                    0, TimeUnit.SECONDS, new LinkedBlockingQueue<>(10));
-            try {
-                this.selector = Selector.open();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            this.start();
-        }
-
-        public void register(SocketChannel channel) throws IOException {
-            channel.configureBlocking(false);
-            channel.register(this.selector, SelectionKey.OP_READ);
-            SocketAddress remoteAddress = null;
-            try {
-                remoteAddress = channel.getRemoteAddress();
-            } catch (IOException ignore) {
-            }
-            this.selector.wakeup();
-            System.out.printf("客户端（%s）连接已建立！%n", remoteAddress != null ? remoteAddress : "未知");
-        }
-
-        @Override
-        public void run() {
-            try {
-                System.out.println("开始监听io事件...");
-                while (true) {
-                    int n = this.selector.select();//当调用 selector.wakeup(); 时直接返回，返回值可能为 0
-                    if (n == 0)
-                        continue;
-                    Set<SelectionKey> keys = selector.selectedKeys();
-                    System.out.println("处理读事件！" + keys.size());
-                    Iterator<SelectionKey> iterator = keys.iterator();
-                    while (iterator.hasNext()) {
-                        SelectionKey key = iterator.next();
-                        iterator.remove();
-                        try {
-                            threadPool.submit(new RequestIOHandler(key));
-                        } catch (Exception ignore) {
-                        }
-                    }
-                    keys.clear();
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            } finally {
-                System.out.println("停止监听io事件！");
-            }
-            System.out.println("----------");
-        }
-
-        public void close() throws IOException {
-            threadPool.shutdownNow();
-            selector.close();
-        }
-    }
 
     public static void main(String[] args) throws IOException {
         ServerSocketChannel serverSocketChannel = null;
@@ -147,7 +132,7 @@ public class NioMultiThreadServer {
         try {
             serverSocketChannel = ServerSocketChannel.open();
             selector = Selector.open();
-            eventLoop = new EventLoop(2);
+            eventLoop = new EventLoop();
             registerShutdownHandler(eventLoop, serverSocketChannel, selector);
             serverSocketChannel.configureBlocking(false);
             serverSocketChannel.register(selector, SelectionKey.OP_ACCEPT);
@@ -159,11 +144,12 @@ public class NioMultiThreadServer {
                 Iterator<SelectionKey> iterator = keys.iterator();
                 while (iterator.hasNext()) {
                     iterator.next();
-                    SocketChannel socketChannel = serverSocketChannel.accept();
-                    if (socketChannel == null)
-                        continue;
-                    eventLoop.register(socketChannel);
                     iterator.remove();
+                    SocketChannel socketChannel = serverSocketChannel.accept();
+                    if (socketChannel == null) {
+                        continue;
+                    }
+                    eventLoop.register(socketChannel);
                 }
             }
         } finally {
