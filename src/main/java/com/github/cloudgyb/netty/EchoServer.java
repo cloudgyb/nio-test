@@ -29,6 +29,7 @@ public class EchoServer {
                     .group(boss, worker)
                     .channel(NioServerSocketChannel.class)
                     .option(ChannelOption.SO_BACKLOG, 10)
+                    .childOption(ChannelOption.MAX_MESSAGES_PER_READ, 10)
                     .childHandler(new ChannelInitializer<NioSocketChannel>() {
                         @Override
                         protected void initChannel(NioSocketChannel socketChannel) {
@@ -42,6 +43,7 @@ public class EchoServer {
                                             SocketAddress remoteAddress = channel.remoteAddress();
                                             logger.info("接收到客户端" + remoteAddress + "消息：" + msg);
                                             ctx.channel().writeAndFlush("回显" + msg);
+                                            ctx.fireChannelRead(msg);
                                         }
                                     });
                         }

@@ -1,8 +1,6 @@
 package com.github.cloudgyb.netty;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.*;
 import io.netty.channel.embedded.EmbeddedChannel;
 
 /**
@@ -18,7 +16,12 @@ public class PipelineTest {
         channel.pipeline().addLast(new TestChannelInboundHandlerAdapter());
         channel.pipeline().addLast(new TestChannelInboundHandlerAdapter());
         channel.pipeline().addLast(new TestChannelInboundHandlerAdapter());
+        channel.pipeline().addLast(new TestChannelOutboundHandler());
+        channel.pipeline().addLast(new TestChannelOutboundHandler());
+        channel.pipeline().addLast(new TestChannelOutboundHandler());
+        channel.pipeline().addLast(new TestChannelOutboundHandler());
         channel.writeInbound("hello");
+        channel.writeOutbound("out hello");
         channel.close().sync();
     }
 
@@ -31,6 +34,17 @@ public class PipelineTest {
             System.out.println("channel in handler " + n);
             System.out.println(msg);
             super.channelRead(ctx, msg);
+        }
+    }
+
+    static class TestChannelOutboundHandler extends ChannelOutboundHandlerAdapter {
+        static int no = 0;
+        int n = ++no;
+
+        @Override
+        public void write(ChannelHandlerContext ctx, Object msg, ChannelPromise promise) throws Exception {
+            System.out.println("channel out handler " + n);
+            super.write(ctx, msg, promise);
         }
     }
 }
