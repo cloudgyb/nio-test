@@ -19,11 +19,11 @@ public class ImClient {
                 .group(eventLoopGroup)
                 .handler(new ChannelInitializer<NioSocketChannel>() {
                     @Override
-                    protected void initChannel(NioSocketChannel channel) throws Exception {
+                    protected void initChannel(NioSocketChannel channel) {
                         channel.pipeline().addLast(new ImServerCodec())
                                 .addLast(new ChannelInboundHandlerAdapter() {
                                     @Override
-                                    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+                                    public void channelRead(ChannelHandlerContext ctx, Object msg) {
                                         System.out.println(msg);
                                     }
                                 });

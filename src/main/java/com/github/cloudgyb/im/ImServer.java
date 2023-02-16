@@ -42,7 +42,7 @@ public class ImServer {
                                     .addLast(new ImServerCodec())
                                     .addLast(new SimpleChannelInboundHandler<Message>() {
                                         @Override
-                                        protected void channelRead0(ChannelHandlerContext ctx, Message message) throws Exception {
+                                        protected void channelRead0(ChannelHandlerContext ctx, Message message) {
                                             Channel channel = ctx.channel();
                                             SocketAddress remoteAddress = channel.remoteAddress();
                                             logger.info("接收到客户端" + remoteAddress + "消息：" + message);
