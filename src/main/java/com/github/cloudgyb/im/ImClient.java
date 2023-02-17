@@ -30,7 +30,7 @@ public class ImClient {
                     }
                 }).connect("localhost", 9090);
         Channel channel = channelFuture.sync().channel();
-        LoginRequestMessage loginRequestMessage = new LoginRequestMessage();
+        LoginRequestMessage loginRequestMessage = new LoginRequestMessage(1);
         loginRequestMessage.setUsername("geng");
         loginRequestMessage.setPassword("123456");
         channel.writeAndFlush(loginRequestMessage);

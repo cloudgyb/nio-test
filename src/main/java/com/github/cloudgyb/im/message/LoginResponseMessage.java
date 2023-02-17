@@ -9,6 +9,10 @@ public class LoginResponseMessage extends Message {
     private int code;
     private String msg;
 
+    public LoginResponseMessage(long seqId) {
+        super(seqId);
+    }
+
     @Override
     public int getMessageType() {
         return Message.LOGIN_RESPONSE_MESSAGE;

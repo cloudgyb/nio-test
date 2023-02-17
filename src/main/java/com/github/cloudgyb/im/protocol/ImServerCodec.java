@@ -23,11 +23,11 @@ public class ImServerCodec extends MessageToMessageCodec<ByteBuf, Message> {
     @Override
     protected void encode(ChannelHandlerContext ctx, Message message, List<Object> list) throws Exception {
         ByteBuf buffer = ctx.alloc().buffer();
-        // 1. 消息魔术
-        buffer.writeInt(Message.magicNum);
-        // 2. 消息版本
+        // 1. 消息魔术 2 字节
+        buffer.writeShort(Message.magicNum);
+        // 2. 消息版本 1 字节
         buffer.writeByte(1);
-        // 3. 消息编码方式
+        // 3. 消息编码方式 1 字节
         buffer.writeByte(Message.serial_jdk);
 
         ByteArrayOutputStream arrayOutputStream = new ByteArrayOutputStream();
@@ -36,7 +36,7 @@ public class ImServerCodec extends MessageToMessageCodec<ByteBuf, Message> {
         byte[] bytes = arrayOutputStream.toByteArray();
         objectOutputStream.close();
         arrayOutputStream.close();
-        // 4. 消息长度
+        // 4. 消息长度 4 字节
         buffer.writeInt(bytes.length);
         // 5. 消息体
         buffer.writeBytes(bytes);
@@ -46,7 +46,7 @@ public class ImServerCodec extends MessageToMessageCodec<ByteBuf, Message> {
 
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf byteBuf, List<Object> list) throws Exception {
-        int magicNum = byteBuf.readInt();
+        int magicNum = byteBuf.readShort();
         if (magicNum != Message.magicNum) {
             ctx.channel().close();
         } else {

@@ -37,7 +37,7 @@ public class ImServer {
                         protected void initChannel(NioSocketChannel socketChannel) {
                             socketChannel.pipeline()
                                     .addLast(new LoggingHandler(LogLevel.DEBUG))
-                                    .addLast(new LengthFieldBasedFrameDecoder(1024, 6, 4,
+                                    .addLast(new LengthFieldBasedFrameDecoder(1024, 4, 4,
                                             0, 0))
                                     .addLast(new ImServerCodec())
                                     .addLast(new SimpleChannelInboundHandler<Message>() {
