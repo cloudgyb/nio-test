@@ -3,7 +3,6 @@ package com.github.cloudgyb.im;
 import com.github.cloudgyb.im.handler.ChatRequestMessageHandler;
 import com.github.cloudgyb.im.handler.ChatResponseMessageHandler;
 import com.github.cloudgyb.im.handler.LoginRequestMessageHandler;
-import com.github.cloudgyb.im.handler.LoginResponseMessageHandler;
 import com.github.cloudgyb.im.protocol.ImServerCodec;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.ChannelFuture;
@@ -13,15 +12,12 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * @author geng
  * @since 2023/02/16 21:19:16
  */
 public class ImServer {
-    private final static Logger logger = LoggerFactory.getLogger(ImServer.class);
 
     public static void main(String[] args) {
         int port = 9090;

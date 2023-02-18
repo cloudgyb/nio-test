@@ -55,7 +55,7 @@ public class ImClient {
                                         channel.close().sync();
                                         isQuit.set(true);
                                         eventLoopGroup.shutdownGracefully();
-                                        System.out.println(cause);
+                                        System.out.println(cause.toString());
                                         System.exit(1);
                                     }
                                 });
@@ -69,21 +69,17 @@ public class ImClient {
                 Message message = null;
                 String[] commands = command.split(" ");
                 switch (commands[0]) {
-                    case "login":
-                        message = new LoginRequestMessage(commands[1], commands[2]);
-                        break;
-                    case "send":
+                    case "login" -> message = new LoginRequestMessage(commands[1], commands[2]);
+                    case "send" -> {
                         if (loginSuccessUsername.get() == null) {
                             System.out.println("用户未登录！");
                             break;
                         }
                         message = new ChatRequestMessage(loginSuccessUsername.get(), commands[1], commands[2]);
-                        break;
-                    case "q":
-                        isQuit.set(true);
-                        break;
-                    default:
-                        break;
+                    }
+                    case "q" -> isQuit.set(true);
+                    default -> {
+                    }
                 }
                 if (message != null) {
                     channel.writeAndFlush(message);
