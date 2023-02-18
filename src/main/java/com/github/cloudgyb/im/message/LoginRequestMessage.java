@@ -8,18 +8,17 @@ public class LoginRequestMessage extends Message {
     private String username;
     private String password;
 
-    public LoginRequestMessage(long seqId) {
-        super(seqId);
+    public LoginRequestMessage() {
+    }
+
+    public LoginRequestMessage(String username, String password) {
+        this.username = username;
+        this.password = password;
     }
 
     @Override
     public int getMessageType() {
         return Message.LOGIN_REQUEST_MESSAGE;
-    }
-
-    @Override
-    public long getSeqId() {
-        return 0;
     }
 
     public String getUsername() {

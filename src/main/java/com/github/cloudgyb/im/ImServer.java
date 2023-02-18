@@ -1,19 +1,20 @@
 package com.github.cloudgyb.im;
 
-import com.github.cloudgyb.im.message.Message;
+import com.github.cloudgyb.im.handler.ChatRequestMessageHandler;
+import com.github.cloudgyb.im.handler.ChatResponseMessageHandler;
+import com.github.cloudgyb.im.handler.LoginRequestMessageHandler;
+import com.github.cloudgyb.im.handler.LoginResponseMessageHandler;
 import com.github.cloudgyb.im.protocol.ImServerCodec;
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.LengthFieldBasedFrameDecoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.SocketAddress;
 
 /**
  * @author geng
@@ -28,6 +29,9 @@ public class ImServer {
         NioEventLoopGroup worker = new NioEventLoopGroup();
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         try {
+            LoginRequestMessageHandler loginRequestMessageHandler = new LoginRequestMessageHandler();
+            ChatRequestMessageHandler chatRequestMessageHandler = new ChatRequestMessageHandler(null);
+            ChatResponseMessageHandler chatResponseMessageHandler = new ChatResponseMessageHandler(null);
             ChannelFuture channelFuture = serverBootstrap
                     .group(boss, worker)
                     .channel(NioServerSocketChannel.class)
@@ -36,18 +40,13 @@ public class ImServer {
                         @Override
                         protected void initChannel(NioSocketChannel socketChannel) {
                             socketChannel.pipeline()
-                                    .addLast(new LoggingHandler(LogLevel.DEBUG))
+                                    //.addLast(new LoggingHandler(LogLevel.DEBUG))
                                     .addLast(new LengthFieldBasedFrameDecoder(1024, 4, 4,
                                             0, 0))
                                     .addLast(new ImServerCodec())
-                                    .addLast(new SimpleChannelInboundHandler<Message>() {
-                                        @Override
-                                        protected void channelRead0(ChannelHandlerContext ctx, Message message) {
-                                            Channel channel = ctx.channel();
-                                            SocketAddress remoteAddress = channel.remoteAddress();
-                                            logger.info("接收到客户端" + remoteAddress + "消息：" + message);
-                                        }
-                                    });
+                                    .addLast(loginRequestMessageHandler)
+                                    .addLast(chatRequestMessageHandler)
+                                    .addLast(chatResponseMessageHandler);
                         }
                     })
                     .bind(port);

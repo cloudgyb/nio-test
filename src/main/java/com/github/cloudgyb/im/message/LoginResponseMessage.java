@@ -6,12 +6,8 @@ package com.github.cloudgyb.im.message;
  */
 public class LoginResponseMessage extends Message {
     private String username;
-    private int code;
-    private String msg;
-
-    public LoginResponseMessage(long seqId) {
-        super(seqId);
-    }
+    private boolean isSuccess;
+    private String reason;
 
     @Override
     public int getMessageType() {
@@ -26,19 +22,28 @@ public class LoginResponseMessage extends Message {
         this.username = username;
     }
 
-    public int getCode() {
-        return code;
+    public boolean isSuccess() {
+        return isSuccess;
     }
 
-    public void setCode(int code) {
-        this.code = code;
+    public void setSuccess(boolean success) {
+        isSuccess = success;
     }
 
-    public String getMsg() {
-        return msg;
+    public String getReason() {
+        return reason;
     }
 
-    public void setMsg(String msg) {
-        this.msg = msg;
+    public void setReason(String reason) {
+        this.reason = reason;
+    }
+
+    @Override
+    public String toString() {
+        return "LoginResponseMessage{" +
+                "username='" + username + '\'' +
+                ", isSuccess=" + isSuccess +
+                ", reason='" + reason + '\'' +
+                '}';
     }
 }
