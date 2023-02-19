@@ -17,5 +17,7 @@ public class TextFrameHandler extends SimpleChannelInboundHandler<TextWebSocketF
     protected void channelRead0(ChannelHandlerContext ctx, TextWebSocketFrame frame) {
         String s = frame.content().toString(StandardCharsets.UTF_8);
         System.out.println(s);
+        TextWebSocketFrame textWebSocketFrame = new TextWebSocketFrame("哈哈哈");
+        ctx.writeAndFlush(textWebSocketFrame);
     }
 }
