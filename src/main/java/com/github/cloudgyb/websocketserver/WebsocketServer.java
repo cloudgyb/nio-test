@@ -41,7 +41,12 @@ public class WebsocketServer {
                                     .addLast(new HttpResponseEncoder())
                                     .addLast(new HttpObjectAggregator(2048, true))
                                     .addLast(new WebSocketServerProtocolHandler("/chat", "chat",
-                                            true, 2028, 2000))
+                                            true, 2028, 2000) {
+                                        @Override
+                                        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) {
+                                            System.out.println(evt);
+                                        }
+                                    })
                                     .addLast(textFrameHandler);
                         }
                     })
