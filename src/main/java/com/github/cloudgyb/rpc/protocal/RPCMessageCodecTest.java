@@ -1,4 +1,4 @@
-package com.github.cloudgyb.rpc;
+package com.github.cloudgyb.rpc.protocal;
 
 import com.github.cloudgyb.rpc.message.MessageSerialTypeEnum;
 import com.github.cloudgyb.rpc.message.RPCMessage;
@@ -13,13 +13,13 @@ import io.netty.handler.logging.LoggingHandler;
  * @author geng
  * @since 2023/02/21 22:03:59
  */
-public class RPCRequestMessageCodecTest {
+public class RPCMessageCodecTest {
     public static void main(String[] args) {
         EmbeddedChannel embeddedChannel = new EmbeddedChannel(
                 new LoggingHandler(),
                 new LengthFieldBasedFrameDecoder(1024, 12, 4,
                         0, 0),
-                new RPCRequestMessageCodec(),
+                new RPCMessageCodec(),
                 new LoggingHandler()
         );
         RPCRequestMessage msg = new RPCRequestMessage("com.github.cloudgyb.rpc.service.HelloService",

@@ -39,7 +39,10 @@ public enum MessageSerialTypeEnum {
             return null;
         } else if (type == GSON.ordinal()) {
             Gson gson = new GsonBuilder().registerTypeAdapter(Class.class, new ClassTypeAdapter()).create();
-            return gson.fromJson(new String(message), messageType == RPCMessage.RPC_REQUEST_MSG ? RPCRequestMessage.class : null);
+            return gson.fromJson(new String(message),
+                    messageType == RPCMessage.RPC_REQUEST_MSG ?
+                            RPCRequestMessage.class : RPCResponseMessage.class
+            );
         }
         return null;
     }

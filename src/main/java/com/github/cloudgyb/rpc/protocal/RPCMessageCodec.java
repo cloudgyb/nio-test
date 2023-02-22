@@ -1,23 +1,24 @@
-package com.github.cloudgyb.rpc;
+package com.github.cloudgyb.rpc.protocal;
 
 import com.github.cloudgyb.rpc.message.MessageSerialTypeEnum;
 import com.github.cloudgyb.rpc.message.RPCMessage;
-import com.github.cloudgyb.rpc.message.RPCRequestMessage;
 import io.netty.buffer.ByteBuf;
+import io.netty.channel.ChannelHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.MessageToMessageCodec;
 
 import java.util.List;
 
 /**
- * rpc 请求编解码器
+ * rpc 消息编解码器
  *
  * @author geng
  * @since 2023/02/21 20:52:35
  */
-public class RPCRequestMessageCodec extends MessageToMessageCodec<ByteBuf, RPCRequestMessage> {
+@ChannelHandler.Sharable
+public class RPCMessageCodec extends MessageToMessageCodec<ByteBuf, RPCMessage> {
     @Override
-    protected void encode(ChannelHandlerContext ctx, RPCRequestMessage msg, List<Object> out) {
+    protected void encode(ChannelHandlerContext ctx, RPCMessage msg, List<Object> out) {
         ByteBuf buffer = ctx.alloc().buffer();
         // 1. 消息魔数 4 字节
         buffer.writeInt(RPCMessage.MSG_MAGIC_CODE);
