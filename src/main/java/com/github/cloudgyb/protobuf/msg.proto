@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+option java_package = "com.github.cloudgyb.protobuf";
+
+option java_outer_classname = "MsgProtocol";
+
+message Msg {
+    uint64 id = 1;
+    string content = 2;
+}

@@ -31,10 +31,36 @@
             <version>2.10.1</version>
         </dependency>
         <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.21.9</version>
+        </dependency>
+        <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>
             <version>0.9.11</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.xolstice.maven.plugins</groupId>
+                <artifactId>protobuf-maven-plugin</artifactId>
+                <version>0.6.1</version>
+                <configuration>
+                    <protoSourceRoot>
+                        ${project.basedir}/src/main/java/com/github/cloudgyb/protobuf/
+                    </protoSourceRoot>
+                    <outputBaseDirectory>
+                        ${project.build.sourceDirectory}
+                    </outputBaseDirectory>
+                    <protocExecutable>
+                        D:\Java\protoc-22.2\bin\protoc.exe
+                    </protocExecutable>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>
