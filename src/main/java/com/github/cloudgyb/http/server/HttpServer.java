@@ -1,13 +1,13 @@
-package com.github.cloudgyb.http;
+package com.github.cloudgyb.http.server;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.channel.*;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.HttpServerCodec;
-import io.netty.handler.codec.http.multipart.HttpPostMultipartRequestDecoder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,14 +35,7 @@ public class HttpServer {
                         protected void initChannel(NioSocketChannel ch) {
                             ch.pipeline()
                                     .addLast(new HttpServerCodec())
-                                    .addLast(new HttpObjectAggregator(2048))
-                                    .addLast(new HttpRequestHandler())
-                                    .addLast(new ChannelInboundHandlerAdapter() {
-                                        @Override
-                                        public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-                                            System.out.println(msg);
-                                        }
-                                    });
+                                    .addLast(new HttpRequestHandler());
                         }
                     }).bind(bindAddress);
             channelFuture.addListener(future -> {
@@ -55,7 +48,7 @@ public class HttpServer {
             });
             channelFuture.channel().closeFuture().sync();
         } catch (Exception e) {
-            e.printStackTrace();
+            logger.error("", e);
         } finally {
             worker.shutdownGracefully();
             boss.shutdownGracefully();
