@@ -3,9 +3,7 @@ package com.github.cloudgyb.http.server;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.handler.codec.http.*;
-import io.netty.handler.codec.http.multipart.HttpPostRequestDecoder;
-import io.netty.handler.codec.http.multipart.InterfaceHttpData;
-import io.netty.handler.codec.http.multipart.InterfaceHttpPostRequestDecoder;
+import io.netty.handler.codec.http.multipart.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,14 +14,13 @@ import java.util.List;
 public class HttpRequestHandler extends SimpleChannelInboundHandler<HttpObject> {
     private final Logger logger = LoggerFactory.getLogger(getClass());
     private InterfaceHttpPostRequestDecoder postRequestDecoder;
-    private HttpRequest currentReq;
+    private volatile HttpReq currentReq;
 
     @Override
     protected void channelRead0(ChannelHandlerContext ctx, HttpObject msg) {
         if (msg instanceof HttpRequest req) {
-            currentReq = req;
-            HttpMethod method = req.method();
-            if (method.equals(HttpMethod.POST)) {
+            currentReq = new HttpReq(req);
+            if (isMultipartRequestOrApplicationXWWWURLEncoded(req)) {
                 postRequestDecoder = new HttpPostRequestDecoder(req);
             }
             HttpVersion httpVersion = req.protocolVersion();
@@ -34,18 +31,25 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<HttpObject> 
             if (postRequestDecoder != null) { // 如果 post 请求解码器不为 null ，处理 post 请求体
                 postRequestDecoder.offer(httpContent);
             } else { // 处理非 post 请求的请求体
-
+                currentReq.addBodyContent(httpContent);
             }
         }
         if (msg instanceof LastHttpContent) { // 是否是最后一段消息体
             if (postRequestDecoder != null) {
                 List<InterfaceHttpData> bodyHttpDatas = postRequestDecoder.getBodyHttpDatas();
+                for (InterfaceHttpData httpData : bodyHttpDatas) {
+                    if (httpData instanceof MixedFileUpload fileUpload) {
+                        currentReq.addUploadFile(fileUpload);
+                    } else if (httpData instanceof Attribute attribute) {
+                        currentReq.addParameter(attribute);
+                    }
+                }
                 postRequestDecoder.destroy();
                 postRequestDecoder = null;
-            } else {
-
             }
             handleResp(ctx, currentReq.protocolVersion());
+            //释放资源
+            currentReq.release();
             currentReq = null;
         }
     }
@@ -76,6 +80,9 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<HttpObject> 
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
         handleExceptionResp(ctx, cause);
+        if (currentReq != null) {
+            currentReq.release();
+        }
         ctx.close();
     }
 
@@ -91,5 +98,16 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<HttpObject> 
         DefaultHttpContent chunkedContent = new DefaultHttpContent(ctx.alloc().buffer().writeBytes(respBody));
         ctx.writeAndFlush(chunkedContent);
         ctx.writeAndFlush(new DefaultLastHttpContent());
+    }
+
+    public boolean isMultipartRequestOrApplicationXWWWURLEncoded(HttpRequest request) {
+        return HttpPostRequestDecoder.isMultipart(request) ||
+                isApplicationXWWWFormURLEncoded(request);
+    }
+
+    public boolean isApplicationXWWWFormURLEncoded(HttpRequest request) {
+        String mimeType = request.headers().get(HttpHeaderNames.CONTENT_TYPE);
+        return (mimeType != null &&
+                mimeType.startsWith(HttpHeaderValues.APPLICATION_X_WWW_FORM_URLENCODED.toString()));
     }
 }
